@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://anonymous-cmd-os.github.io; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;">
+    <title>Secure Biometric Authentication</title>
+    <style>
+        :root[data-theme="light"] {
+            --primary-bg: #ffffff;
+            --secondary-bg: #f8f9fa;
+            --text-primary: #2c3e50;
+            --text-secondary: #606060;
+            --accent-color: #3498db;
+            --success-color: #2ecc71;
+            --warning-color: #f1c40f;
+            --error-color: #e74c3c;
+            --card-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+            --gradient-bg: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        }
+
+        :root[data-theme="dark"] {
+            --primary-bg: #1a1a1a;
+            --secondary-bg: #2d2d2d;
+            --text-primary: #ffffff;
+            --text-secondary: #b3b3b3;
+            --accent-color: #64b5f6;
+            --success-color: #81c784;
+            --warning-color: #ffd54f;
+            --error-color: #e57373;
+            --card-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            --gradient-bg: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--gradient-bg);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-primary);
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--primary-bg);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            width: 95%;
+            max-width: 800px;
+            position: relative;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--secondary-bg);
+        }
+
+        .system-info {
+            background: var(--secondary-bg);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .system-info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .auth-step {
+            background: var(--secondary-bg);
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin-bottom: 1rem;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.5s forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .button {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            width: 100%;
+            margin-top: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            transition: transform 0.2s ease;
+        }
+
+        .button:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        .button:disabled {
+            background: var(--text-secondary);
+            cursor: not-allowed;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: var(--secondary-bg);
+            border-radius: 3px;
+            margin-top: 1rem;
+            overflow: hidden;
+        }
+
+        .progress {
+            width: 0%;
+            height: 100%;
+            background: var(--accent-color);
+            transition: width 0.3s ease;
+        }
+
+        .success-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(46, 204, 113, 0.2);
+            backdrop-filter: blur(5px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .redirect-countdown {
+            background: var(--primary-bg);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: var(--card-shadow);
+            text-align: center;
+            animation: scaleIn 0.3s ease;
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .countdown-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            margin: 1rem 0;
+        }
+
+        #qr-code {
+            display: flex;
+            justify-content: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 10px;
+            margin: 1rem 0;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 1rem;
+            border-radius: 10px;
+            background: var(--primary-bg);
+            box-shadow: var(--card-shadow);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Secure Authentication System</h1>
+            <button class="button" onclick="toggleTheme()" style="width: auto">Toggle Theme</button>
+        </div>
+
+        <div class="system-info">
+            <div class="system-info-grid">
+                <div>
+                    <strong>Current Time (UTC):</strong>
+                    <div id="current-time">2025-03-22 08:15:32</div>
+                </div>
+                <div>
+                    <strong>User:</strong>
+                    <div id="current-user">anonymous-cmd-os</div>
+                </div>
+                <div>
+                    <strong>Session ID:</strong>
+                    <div id="session-id"></div>
+                </div>
+                <div>
+                    <strong>Security Level:</strong>
+                    <div id="security-level">High</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="auth-step">
+            <h2>Step 1: Generate Secure Passkey</h2>
+            <p>Initialize a cryptographically secure passkey for authentication</p>
+            <button class="button" id="generate-passkey-btn" onclick="generateSecurePasskey()">
+                Generate Passkey
+                <span class="loading-spinner">⌛</span>
+            </button>
+            <div class="progress-bar">
+                <div class="progress" id="passkey-progress"></div>
+            </div>
+        </div>
+
+        <div class="auth-step">
+            <h2>Step 2: QR Code Verification</h2>
+            <p>Scan the QR code with your mobile device</p>
+            <div id="qr-code"></div>
+            <button class="button" id="generate-qr-btn" onclick="generateQRCode()" disabled>
+                Generate QR Code
+                <span class="loading-spinner">⌛</span>
+            </button>
+        </div>
+
+        <div class="auth-step">
+            <h2>Step 3: Biometric Verification</h2>
+            <p>Complete the verification using your biometric data</p>
+            <button class="button" id="verify-btn" onclick="startBiometricVerification()" disabled>
+                Start Verification
+                <span class="loading-spinner">⌛</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="success-overlay" id="success-overlay">
+        <div class="redirect-countdown">
+            <h2>Verification Successful!</h2>
+            <p>Redirecting to Resume in</p>
+            <div class="countdown-number" id="countdown">3</div>
+            <p>seconds...</p>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        // System Configuration
+        const CONFIG = {
+            userInfo: {
+                username: 'anonymous-cmd-os',
+                currentTime: '2025-03-22 08:15:32',
+                redirectUrl: 'https://anonymous-cmd-os.github.io/resume/'
+            },
+            security: {
+                sessionTimeout: 300000, // 5 minutes
+                maxRetries: 3,
+                minPasskeyLength: 32
+            }
+        };
+
+        // System State
+        const systemState = {
+            theme: 'light',
+            passkey: null,
+            encryptionKey: null,
+            sessionId: crypto.randomUUID(),
+            retryCount: 0
+        };
+
+        // Initialize System
+        function initializeSystem() {
+            document.getElementById('current-time').textContent = CONFIG.userInfo.currentTime;
+            document.getElementById('current-user').textContent = CONFIG.userInfo.username;
+            document.getElementById('session-id').textContent = systemState.sessionId;
+            updateSecurityLevel('High');
+        }
+
+        // Theme Toggle
+        function toggleTheme() {
+            const newTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            systemState.theme = newTheme;
+            showToast(`Theme switched to ${newTheme} mode`);
+        }
+
+        // Generate Secure Passkey
+        async function generateSecurePasskey() {
+            const generateBtn = document.getElementById('generate-passkey-btn');
+            const progress = document.getElementById('passkey-progress');
+            generateBtn.disabled = true;
+
+            try {
+                // Generate encryption key
+                systemState.encryptionKey = await crypto.subtle.generateKey(
+                    { name: 'AES-GCM', length: 256 },
+                    true,
+                    ['encrypt', 'decrypt']
+                );
+
+                // Generate secure random passkey
+                const array = new Uint8Array(CONFIG.security.minPasskeyLength);
+                crypto.getRandomValues(array);
+                systemState.passkey = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+
+                // Simulate progress
+                for (let i = 0; i <= 100; i += 10) {
+                    progress.style.width = `${i}%`;
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                document.getElementById('generate-qr-btn').disabled = false;
+                showToast('Passkey generated successfully');
+
+            } catch (error) {
+                showToast(`Error: ${error.message}`, 'error');
+            } finally {
+                generateBtn.disabled = false;
+            }
+        }
+
+        // Generate QR Code
+        async function generateQRCode() {
+            if (!systemState.passkey) {
+                showToast('Please generate a passkey first', 'warning');
+                return;
+            }
+
+            const qrContainer = document.getElementById('qr-code');
+            qrContainer.innerHTML = '';
+
+            try {
+                const qrData = await encryptData(systemState.passkey);
+                new QRCode(qrContainer, {
+                    text: JSON.stringify(qrData),
+                    width: 200,
+                    height: 200,
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+
+                document.getElementById('verify-btn').disabled = false;
+                showToast('QR Code generated successfully');
+
+            } catch (error) {
+                showToast(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Biometric Verification
+        async function startBiometricVerification() {
+            try {
+                if (!window.PublicKeyCredential) {
+                    throw new Error('WebAuthn not supported');
+                }
+
+                const credential = await navigator.credentials.create({
+                    publicKey: {
+                        challenge: new TextEncoder().encode(systemState.passkey),
+                        rp: {
+                            name: 'Secure Auth System',
+                            id: window.location.hostname
+                        },
+                        user: {
+                            id: new Uint8Array(16),
+                            name: CONFIG.userInfo.username,
+                            displayName: CONFIG.userInfo.username
+                        },
+                        pubKeyCredParams: [
+                            { type: 'public-key', alg: -7 },
+                            { type: 'public-key', alg: -257 }
+                        ],
+                        timeout: 60000,
+                        attestation: 'direct',
+                        authenticatorSelection: {
+                            authenticatorAttachment: 'platform',
+                            userVerification: 'required',
+                            residentKey: 'required'
+                        }
+                    }
+                });
+
+                // Show success overlay and start redirect countdown
+                showSuccessAndRedirect();
+
+            } catch (error) {
+                handleVerificationError(error);
+            }
+        }
+
+        // Success and Redirect
+        function showSuccessAndRedirect() {
+            const overlay = document.getElementById('success-overlay');
+            const countdownElement = document.getElementById('countdown');
+            overlay.style.display = 'flex';
+            
+            let count = 3;
+            const countdownInterval = setInterval(() => {
+                count--;
+                countdownElement.textContent = count;
+                
+                if (count <= 0) {
+                    clearInterval(countdownInterval);
+                    window.location.href = CONFIG.userInfo.redirectUrl;
+                }
+            }, 1000);
+        }
+
+        // Utility Functions
+        async function encryptData(data) {
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const encrypted = await crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv },
+                systemState.encryptionKey,
+                new TextEncoder().encode(data)
+            );
+
+            return {
+                data: Array.from(new Uint8Array(encrypted)),
+                iv: Array.from(iv),
+                timestamp: Date.now(),
+                sessionId: systemState.sessionId
+            };
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function handleVerificationError(error) {
+            systemState.retryCount++;
+            if (systemState.retryCount >= CONFIG.security.maxRetries) {
+                showToast('Maximum retry attempts exceeded', 'error');
+                resetSystem();
+            } else {
+                showToast(`Verification failed. ${CONFIG.security.maxRetries - systemState.retryCount} attempts remaining`, 'warning');
+            }
+        }
+
+        function updateSecurityLevel(level) {
+            document.getElementById('security-level').textContent = level;
+        }
+
+        function resetSystem() {
+            systemState.passkey = null;
+            systemState.encryptionKey = null;
+            systemState.retryCount = 0;
+            document.getElementById('generate-qr-btn').disabled = true;
+            document.getElementById('verify-btn').disabled = true;
+            document.getElementById('qr-code').innerHTML = '';
+            document.getElementById('passkey-progress').style.width = '0%';
+        }
+
+        // Initialize the system
+        initializeSystem();
+    </script>
+</body>
+</html>
